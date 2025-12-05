@@ -1,277 +1,317 @@
+  (function(){
+    // ---- CONFIG ----
+    // enter your url of lambda function here
+    // const PRESIGN_URL = "https://l5ehkjo7iwhovs5q55cadg6xjq0gwxda.lambda-url.us-east-1.on.aws/";
+    // const PRESIGN_GET_URL = "https://zu6vnpuylskru35a6hkdhkjwaa0ajauj.lambda-url.us-east-1.on.aws/";
+    const POLL_INTERVAL_MS = 2000;
+    const POLL_TIMEOUT_MS = 120000;
 
-(function(){
-  // ---- CONFIG: your Lambda Function URLs (already provided earlier) ----
-  const PRESIGN_URL = "https://l5ehkjo7iwhovs5q55cadg6xjq0gwxda.lambda-url.us-east-1.on.aws/";
-  const PRESIGN_GET_URL = "https://zu6vnpuylskru35a6hkdhkjwaa0ajauj.lambda-url.us-east-1.on.aws/";
+    // UI elements
+    const input = document.getElementById('csvInput');
+    const statusEl = document.getElementById('uploadStatus');
+    const kpiTotal = document.getElementById('kpiTotal');
+    const kpiPos = document.getElementById('kpiPos');
+    const kpiNeu = document.getElementById('kpiNeu');
+    const kpiNeg = document.getElementById('kpiNeg');
+    const feedbackList = document.getElementById('feedbackList');
 
-  // Polling / timeout
-  const POLL_INTERVAL_MS = 2000;
-  const POLL_TIMEOUT_MS = 120000;
+    // State management
+    let allFeedbackData = [];
+    let currentFilter = 'all';
 
-  // UI elements
-  const input = document.getElementById('csvInput');
-  const statusEl = document.getElementById('uploadStatus');
-  const kpiTotal = document.getElementById('kpiTotal');
-  const kpiPos = document.getElementById('kpiPos');
-  const kpiNeu = document.getElementById('kpiNeu');
-  const kpiNeg = document.getElementById('kpiNeg');
-
-  const feedbackList = document.getElementById('feedbackList');
-  const sentimentCard = document.getElementById('sentimentCard'); // visible by default
-  const themesCard = document.getElementById('themesCard');       // hidden until themes found
-  const themesList = document.getElementById('themesList');
-
-  // filter chips
-  const chipAll = document.querySelector('.filters .chip');
-  const chips = Array.from(document.querySelectorAll('.filters .chip'));
-
-  // in-memory storage of rows from latest analysis
-  let storedRows = []; // each item: { text, sentiment, ... }
-  let currentFilter = 'All'; // All / Positive / Neutral / Negative
-
-  function setStatus(msg){
-    if(statusEl) statusEl.textContent = msg;
-    console.log('[Dashboard] ' + msg);
-  }
-
-  // network helpers
-  async function getPresign(filename){
-    const res = await fetch(PRESIGN_URL, {
-      method: 'POST',
-      headers: {'Content-Type':'application/json'},
-      body: JSON.stringify({ filename })
-    });
-    const parsed = await res.json();
-    if(parsed && parsed.body){
-      try { return JSON.parse(parsed.body); } catch(e){ return parsed.body; }
+    // ---- HELPER FUNCTIONS ----
+    function setStatus(msg){
+      if(statusEl) statusEl.textContent = msg;
+      console.log('[Dashboard] ' + msg);
     }
-    return parsed;
-  }
 
-  async function uploadToS3(presignedUrl, file){
-    const res = await fetch(presignedUrl, {
-      method: 'PUT',
-      headers: {'Content-Type':'text/csv'},
-      body: file
-    });
-    if(!res.ok){
-      const text = await res.text().catch(()=>null);
-      throw new Error('S3 upload failed: ' + res.status + ' ' + res.statusText + (text?(' - '+text):''));
+    function normalizeSentiment(sentiment) {
+      const s = (sentiment || '').toLowerCase().trim();
+      if (s.includes('pos') || s === 'positive') return 'positive';
+      if (s.includes('neg') || s === 'negative') return 'negative';
+      return 'neutral';
     }
-  }
 
-  async function getPresignGet(key){
-    const res = await fetch(PRESIGN_GET_URL, {
-      method: 'POST',
-      headers: {'Content-Type':'application/json'},
-      body: JSON.stringify({ key })
-    });
-    const parsed = await res.json();
-    if(parsed && parsed.body){
-      try { return JSON.parse(parsed.body); } catch(e){ return parsed.body; }
+    function extractThemes(feedbackRows) {
+      // Extract common keywords/themes from feedback text
+      const wordCounts = {};
+      const stopWords = new Set(['the', 'is', 'at', 'which', 'on', 'a', 'an', 'and', 'or', 'but', 'in', 'with', 'to', 'for', 'of', 'as', 'by', 'it', 'from', 'are', 'was', 'were', 'been', 'be', 'have', 'has', 'had', 'do', 'does', 'did', 'will', 'would', 'could', 'should', 'may', 'might', 'can', 'this', 'that', 'these', 'those', 'i', 'you', 'he', 'she', 'we', 'they', 'my', 'your', 'his', 'her', 'its', 'our', 'their', 'me', 'him', 'her', 'us', 'them']);
+
+      feedbackRows.forEach(row => {
+        const text = (row.text || row.comment || '').toLowerCase();
+        const words = text.match(/\b[a-z]{4,}\b/g) || [];
+        
+        words.forEach(word => {
+          if (!stopWords.has(word)) {
+            wordCounts[word] = (wordCounts[word] || 0) + 1;
+          }
+        });
+      });
+
+      // Get top themes
+      const sorted = Object.entries(wordCounts)
+        .sort((a, b) => b[1] - a[1])
+        .slice(0, 5);
+
+      return sorted.map(([word]) => `#${word}`);
     }
-    return parsed;
-  }
 
-  async function pollForResults(resultKey){
-    const start = Date.now();
-    while(Date.now() - start < POLL_TIMEOUT_MS){
-      try {
-        const pres = await getPresignGet(resultKey);
-        const getUrl = pres && (pres.url || (pres.data && pres.data.url));
-        if(getUrl){
-          const r = await fetch(getUrl);
-          if(r.ok) return await r.json();
-        }
-      } catch(e){
-        console.log('poll attempt error', e);
+    function updateThemes(themes) {
+      const tagsContainer = document.querySelector('.tags');
+      if (tagsContainer && themes.length > 0) {
+        tagsContainer.innerHTML = themes.map(t => `<li>${t}</li>`).join('');
       }
-      await new Promise(r => setTimeout(r, POLL_INTERVAL_MS));
     }
-    throw new Error('Timed out waiting for results');
-  }
 
-  // render helpers
-  function clearFeedbackList(){ if(feedbackList) feedbackList.innerHTML = ''; }
+    function updateKPIs(total, pos, neu, neg){
+      if(kpiTotal) kpiTotal.textContent = total ?? '-';
+      if(kpiPos) kpiPos.textContent = pos ?? '-';
+      if(kpiNeu) kpiNeu.textContent = neu ?? '-';
+      if(kpiNeg) kpiNeg.textContent = neg ?? '-';
 
-  function renderFeedbackList(filter = 'All'){
-    if(!feedbackList) return;
-    clearFeedbackList();
+      // Update bar chart
+      const posBar = document.querySelector('.bar.pos');
+      const neuBar = document.querySelector('.bar.neu');
+      const negBar = document.querySelector('.bar.neg');
+      
+      if(posBar && neuBar && negBar && typeof total === 'number' && total > 0){
+        const p = Math.round((pos/total)*100);
+        const n = Math.round((neg/total)*100);
+        const m = 100 - p - n;
+        
+        posBar.style.setProperty('--w', p + '%');
+        neuBar.style.setProperty('--w', m + '%');
+        negBar.style.setProperty('--w', n + '%');
+        posBar.querySelector('span').textContent = p + '%';
+        neuBar.querySelector('span').textContent = m + '%';
+        negBar.querySelector('span').textContent = n + '%';
+      }
+    }
 
-    // newest-first
-    const rows = storedRows.slice().reverse();
-
-    const filtered = rows.filter(r => {
-      if(filter === 'All') return true;
-      if(filter === 'Positive') return (r.sentiment || '').toLowerCase() === 'positive';
-      if(filter === 'Neutral') return (r.sentiment || '').toLowerCase() === 'neutral';
-      if(filter === 'Negative') return (r.sentiment || '').toLowerCase() === 'negative';
-      return true;
-    });
-
-    for(const r of filtered){
+    function createFeedbackRow(item, index){
       const li = document.createElement('li');
+      li.dataset.index = index;
+      li.dataset.sentiment = item.sentiment;
 
-      const sentiment = (r.sentiment || '').toLowerCase();
+      const sentiment = item.sentiment;
       const badge = document.createElement('span');
       badge.className = 'badge ' + (sentiment === 'positive' ? 'pos' : sentiment === 'negative' ? 'neg' : 'neu');
-      badge.textContent = (sentiment === 'positive' ? 'Positive' : sentiment === 'negative' ? 'Negative' : 'Neutral');
+      badge.textContent = sentiment.charAt(0).toUpperCase() + sentiment.slice(1);
 
       const p = document.createElement('p');
-      p.textContent = r.text || r.comment || '';
+      p.textContent = item.text || item.comment || '';
 
       const meta = document.createElement('span');
       meta.className = 'meta';
-      meta.textContent = r.meta || new Date().toLocaleDateString();
+      
+      // Try to parse date from item
+      let dateStr = 'Recent';
+      if (item.date) {
+        try {
+          const d = new Date(item.date);
+          if (!isNaN(d.getTime())) {
+            dateStr = d.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
+          }
+        } catch(e) {}
+      }
+      meta.textContent = dateStr + ' • ' + (item.source || 'Web');
 
       li.appendChild(badge);
       li.appendChild(p);
       li.appendChild(meta);
-      feedbackList.appendChild(li);
-    }
-  }
 
-  function computeTopThemes(rows, topN = 5){
-    if(!Array.isArray(rows) || rows.length === 0) return [];
-    const stopwords = new Set(['the','and','for','with','that','this','it','its','is','are','was','were','but','not','too','very','i','my','we','you','they','their','have','has','had','be','on','in','of','a','an','to','from']);
-    const counts = new Map();
-    for(const r of rows){
-      const text = (r.text || r.comment || '').toLowerCase();
-      if(!text) continue;
-      const tokens = text.replace(/[^\w\s]/g,' ').split(/\s+/).filter(Boolean);
-      for(const t of tokens){
-        if(t.length < 3) continue;
-        if(stopwords.has(t)) continue;
-        if(/^\d+$/.test(t)) continue;
-        counts.set(t, (counts.get(t)||0)+1);
+      return li;
+    }
+
+    function renderFeedback(filter = 'all') {
+      if (!feedbackList) return;
+
+      const filtered = filter === 'all' 
+        ? allFeedbackData 
+        : allFeedbackData.filter(item => item.sentiment === filter);
+
+      feedbackList.innerHTML = '';
+      
+      if (filtered.length === 0) {
+        const li = document.createElement('li');
+        li.innerHTML = '<p class="muted">No feedback matching this filter.</p>';
+        feedbackList.appendChild(li);
+        return;
       }
-    }
-    return Array.from(counts.entries()).sort((a,b)=>b[1]-a[1]).slice(0, topN).map(x=>x[0]);
-  }
 
-  function updateTopThemes(rows){
-    if(!themesCard || !themesList) return;
-    const themes = computeTopThemes(rows, 5);
-    themesList.innerHTML = '';
-    if(!themes.length){
-      themesCard.classList.add('hidden');
-      return;
-    }
-    themesCard.classList.remove('hidden');
-    for(const t of themes){
-      const li = document.createElement('li');
-      li.textContent = '#' + t.replace(/\s+/g,'-');
-      themesList.appendChild(li);
-    }
-  }
-
-  function updateKPIs(total, pos, neu, neg){
-    if(kpiTotal) kpiTotal.textContent = (typeof total === 'number' ? total : (total ?? '-'));
-    if(kpiPos) kpiPos.textContent = (typeof pos === 'number' ? pos : (pos ?? '-'));
-    if(kpiNeu) kpiNeu.textContent = (typeof neu === 'number' ? neu : (neu ?? '-'));
-    if(kpiNeg) kpiNeg.textContent = (typeof neg === 'number' ? neg : (neg ?? '-'));
-  }
-
-  function updateSentimentMix(total, pos, neu, neg){
-    if(!sentimentCard) return;
-    sentimentCard.classList.remove('hidden');
-    const posBar = sentimentCard.querySelector('.bar.pos');
-    const neuBar = sentimentCard.querySelector('.bar.neu');
-    const negBar = sentimentCard.querySelector('.bar.neg');
-
-    let pPct = 0, nPct = 0, mPct = 0;
-    if(total && total > 0){
-      pPct = Math.round((pos/total)*100);
-      nPct = Math.round((neg/total)*100);
-      mPct = 100 - pPct - nPct;
-      if(mPct < 0) mPct = 0;
-    }
-
-    if(posBar && neuBar && negBar){
-      posBar.style.setProperty('--w', pPct + '%');
-      neuBar.style.setProperty('--w', mPct + '%');
-      negBar.style.setProperty('--w', nPct + '%');
-      posBar.querySelector('span').textContent = pPct + '%';
-      neuBar.querySelector('span').textContent = mPct + '%';
-      negBar.querySelector('span').textContent = nPct + '%';
-    }
-  }
-
-  // attach filter behaviour to chips
-  function setupFilters(){
-    if(!chips || chips.length === 0) return;
-    chips.forEach(chip => {
-      chip.addEventListener('click', () => {
-        // remove active from all
-        chips.forEach(c=>c.classList.remove('active'));
-        chip.classList.add('active');
-
-        const txt = chip.textContent.trim();
-        currentFilter = txt; // 'All' / 'Positive' / 'Neutral' / 'Negative'
-        renderFeedbackList(currentFilter);
+      filtered.forEach((item, idx) => {
+        feedbackList.appendChild(createFeedbackRow(item, idx));
       });
-    });
-    // default filter
-    renderFeedbackList(currentFilter);
-  }
+    }
 
-  // Wire input change and full flow
-  if(input){
-    input.addEventListener('change', async (e) => {
-      const file = e.target.files && e.target.files[0];
-      if(!file) return;
+    function setupFilters() {
+      const filterButtons = document.querySelectorAll('.filters .chip');
+      
+      filterButtons.forEach(btn => {
+        btn.addEventListener('click', () => {
+          // Remove active class from all
+          filterButtons.forEach(b => b.classList.remove('active'));
+          // Add to clicked
+          btn.classList.add('active');
+
+          // Determine filter
+          const text = btn.textContent.toLowerCase();
+          if (text === 'all') {
+            currentFilter = 'all';
+          } else if (text === 'positive') {
+            currentFilter = 'positive';
+          } else if (text === 'neutral') {
+            currentFilter = 'neutral';
+          } else if (text === 'negative') {
+            currentFilter = 'negative';
+          }
+
+          renderFeedback(currentFilter);
+        });
+      });
+    }
+
+    // ---- API FUNCTIONS ----
+    async function getPresign(filename){
       try {
-        setStatus('Requesting upload URL...');
-        const pres = await getPresign(file.name);
-        const uploadUrl = pres && (pres.url || pres.putUrl || (pres.data && pres.data.url));
-        const key = pres && (pres.key || (pres.data && pres.data.key));
-        if(!uploadUrl || !key) throw new Error('Presign response missing url/key. Check presign Lambda.');
-
-        setStatus('Uploading file to S3...');
-        await uploadToS3(uploadUrl, file);
-        setStatus('Uploaded. Waiting for analysis...');
-
-        const resultKey = 'results/' + key.replace(/^uploads\//, '') + '.json';
-        const resultJson = await pollForResults(resultKey);
-
-        setStatus('Analysis complete');
-
-        const total = typeof resultJson.total === 'number' ? resultJson.total : (resultJson.rows ? resultJson.rows.length : 0);
-        const pos = typeof resultJson.positive === 'number' ? resultJson.positive : 0;
-        const neu = typeof resultJson.neutral === 'number' ? resultJson.neutral : 0;
-        const neg = typeof resultJson.negative === 'number' ? resultJson.negative : 0;
-
-        // store rows for rendering/filtering (we keep original order as returned)
-        storedRows = Array.isArray(resultJson.rows) ? resultJson.rows.map(r => ({
-          text: r.text || r.comment || '',
-          sentiment: (r.sentiment || '').toLowerCase(),
-          meta: r.date || r.meta || new Date().toLocaleDateString()
-        })) : [];
-
-        // update UI components
-        updateKPIs(total, pos, neu, neg);
-        updateSentimentMix(total, pos, neu, neg);
-        updateTopThemes(storedRows);
-
-        // render feedback list (newest first)
-        renderFeedbackList(currentFilter);
-      } catch(err){
-        console.error(err);
-        setStatus('Error: ' + (err.message || err));
-      } finally {
-        input.value = '';
+        const res = await fetch(PRESIGN_URL, {
+          method: 'POST',
+          headers: {'Content-Type':'application/json'},
+          body: JSON.stringify({ filename })
+        });
+        const parsed = await res.json();
+        if(parsed && parsed.body){
+          try { return JSON.parse(parsed.body); } catch(e){ return parsed.body; }
+        }
+        return parsed;
+      } catch(e){
+        throw new Error('Failed calling presign: ' + e.message);
       }
-    });
-  } else {
-    console.warn('CSV input element not found - file upload disabled');
-  }
+    }
 
-  // initial setup
-  // show sentiment card by default (you insisted)
-  if(sentimentCard) sentimentCard.classList.remove('hidden');
-  // hide themes until available
-  if(themesCard) themesCard.classList.add('hidden');
-  setupFilters();
+    async function uploadToS3(presignedUrl, file){
+      const res = await fetch(presignedUrl, {
+        method: 'PUT',
+        headers: {'Content-Type':'text/csv'},
+        body: file
+      });
+      if(!res.ok) throw new Error('S3 upload failed: ' + res.status + ' ' + res.statusText);
+    }
 
-})();
+    async function getPresignGet(key){
+      try {
+        const res = await fetch(PRESIGN_GET_URL, {
+          method: 'POST',
+          headers: {'Content-Type':'application/json'},
+          body: JSON.stringify({ key })
+        });
+        const parsed = await res.json();
+        if(parsed && parsed.body){
+          try { return JSON.parse(parsed.body); } catch(e){ return parsed.body; }
+        }
+        return parsed;
+      } catch(e){
+        throw new Error('Failed calling presign_get: ' + e.message);
+      }
+    }
 
+    async function pollForResults(resultKey){
+      const start = Date.now();
+      while(Date.now() - start < POLL_TIMEOUT_MS){
+        try {
+          const pres = await getPresignGet(resultKey);
+          const getUrl = pres && (pres.url || (pres.data && pres.data.url));
+          if(getUrl){
+            const r = await fetch(getUrl);
+            if(r.ok){
+              const j = await r.json();
+              return j;
+            }
+          }
+        } catch(e){
+          console.log('poll attempt error', e);
+        }
+        await new Promise(r => setTimeout(r, POLL_INTERVAL_MS));
+      }
+      throw new Error('Timed out waiting for results');
+    }
+
+    // ---- MAIN UPLOAD HANDLER ----
+    if(input){
+      input.addEventListener('change', async (e) => {
+        const file = e.target.files && e.target.files[0];
+        if(!file) return;
+        
+        try {
+          setStatus('Requesting upload URL...');
+          const pres = await getPresign(file.name);
+          const uploadUrl = pres && (pres.url || pres.putUrl || (pres.data && pres.data.url));
+          const key = pres && (pres.key || (pres.data && pres.data.key));
+          
+          if(!uploadUrl || !key) {
+            throw new Error('Presign response missing url/key. Check presign Lambda.');
+          }
+
+          setStatus('Uploading file to S3...');
+          await uploadToS3(uploadUrl, file);
+          setStatus('Uploaded. Waiting for analysis...');
+
+          const resultKey = 'results/' + key.replace(/^uploads\//, '') + '.json';
+          const resultJson = await pollForResults(resultKey);
+
+          setStatus('Analysis complete!');
+
+          // Process results
+          const rows = resultJson.rows || [];
+          
+          // Normalize sentiment in all rows
+          const processedRows = rows.map(row => ({
+            ...row,
+            text: row.text || row.comment || '',
+            sentiment: normalizeSentiment(row.sentiment || row.sentimentLabel),
+            date: row.date || row.timestamp || null,
+            source: row.source || row.platform || 'Web'
+          }));
+
+          // Calculate sentiment counts
+          const counts = {
+            total: processedRows.length,
+            positive: processedRows.filter(r => r.sentiment === 'positive').length,
+            neutral: processedRows.filter(r => r.sentiment === 'neutral').length,
+            negative: processedRows.filter(r => r.sentiment === 'negative').length
+          };
+
+          // Update state
+          allFeedbackData = processedRows;
+          currentFilter = 'all';
+
+          // Update UI
+          updateKPIs(counts.total, counts.positive, counts.neutral, counts.negative);
+          
+          // Extract and update themes
+          const themes = extractThemes(processedRows);
+          updateThemes(themes);
+
+          // Render feedback
+          renderFeedback('all');
+
+          // Reset filter buttons
+          document.querySelectorAll('.filters .chip').forEach(b => {
+            b.classList.toggle('active', b.textContent === 'All');
+          });
+
+        } catch(err){
+          console.error(err);
+          setStatus('Error: ' + (err.message || err));
+        } finally {
+          input.value = '';
+        }
+      });
+    } else {
+      console.warn('CSV input element not found - file upload disabled');
+    }
+
+    // Initialize filters
+    setupFilters();
+
+  })();
