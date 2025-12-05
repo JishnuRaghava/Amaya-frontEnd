@@ -1,0 +1,145 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Amatya – Feedback Analyzer Dashboard</title>
+    <link rel="stylesheet" href="Dashboard-style.css">
+</head>
+<!-- set API base (Netlify will serve this file; change value before deploy or use a built system) -->
+<script>
+  // default to localhost for local dev; set to deployed backend before deploy:
+  window.__API_BASE__ = "http://localhost:8082";
+</script>
+
+<body>
+  <!-- Top Nav -->
+   <header class="site-header">
+    <div class="icon">
+                    <h2 class="logo" >Amatya</h2>
+                </div>
+    
+                <div class="menu">
+                    <ul>
+                        <li><a href="Index.html">Home</a></li>
+                        <li><a href="#">About</a></li>
+                        <li><a href="#">Contact</a></li>
+                        <li><a href="#">Products</a></li>
+                        <li><a href="#">Menu</a></li>
+                    </ul>
+                </div>
+    
+                <div class="search">
+                    <input class="srch" type="search" placeholder="Type to Text">
+                    <button class="btn">Search</button>
+                </div>
+            </div>
+    </header>
+
+  <!-- Hero -->
+  <section class="hero container">
+    <div class="hero-left">
+      <h1>
+        Amatya<br/>
+        Feedback <span class="accent">Dashboard</span><br/>
+        Products Reviews &amp;<br/>
+        analysis
+      </h1>
+    </div>
+
+    <div class="hero-right">
+      <p>Turn feedback into clear, actionable insights. Upload review files, monitor key metrics, and browse
+         organized comments in one elegant workspace designed for focus.</p>
+
+      <!-- Upload Card -->
+      <div class="card upload-card" aria-labelledby="upload-title">
+        <h3 id="upload-title">Upload Files</h3>
+        <p class="muted">CSV, XLSX, or JSON with columns like <strong>comment</strong>, <strong>rating</strong>, and <strong>date</strong>.</p>
+
+        <div class="dropzone" role="button" tabindex="0" aria-label="Drag and drop files here">
+          <i class="fa-solid fa-cloud-arrow-up"></i>
+          <p><strong>Drag &amp; drop</strong> your files here or</p>
+          <label class="file-label">
+            <input type="file" multiple />
+            <span class="btn btn-gradient">Browse Files</span>
+          </label>
+        </div>
+        <div class="hint">Max 20 MB per file • Your data stays on your machine in this demo</div>
+      </div>
+    </div>
+  </section>
+
+  <!-- Dashboard -->
+  <main class="container dashboard" aria-label="Feedback dashboard">
+    <!-- KPIs -->
+    <section class="kpis" aria-label="Key metrics">
+      <div class="card kpi"><span class="kpi-label">Total Reviews</span><span class="kpi-value">1,284</span></div>
+      <div class="card kpi"><span class="kpi-label">Positive</span><span class="kpi-value pos">842</span></div>
+      <div class="card kpi"><span class="kpi-label">Neutral</span><span class="kpi-value neu">276</span></div>
+      <div class="card kpi"><span class="kpi-label">Negative</span><span class="kpi-value neg">166</span></div>
+    </section>
+
+    <section class="grid-2">
+      <div class="card chart">
+        <h3>Sentiment Mix</h3>
+        <div class="barset">
+          <div class="bar pos" style="--w: 65%"><span>65%</span></div>
+          <div class="bar neu" style="--w: 22%"><span>22%</span></div>
+          <div class="bar neg" style="--w: 13%"><span>13%</span></div>
+        </div>
+        <p class="muted">Proportions shown for illustration.</p>
+      </div>
+
+      <div class="card chart">
+        <h3>Top Themes</h3>
+        <ul class="tags">
+          <li>#delivery-speed</li><li>#price-value</li><li>#support-quality</li>
+          <li>#ui-clarity</li><li>#feature-requests</li>
+        </ul>
+      </div>
+    </section>
+
+    <section class="card feedback" aria-label="Recent feedback">
+      <div class="feedback-header">
+        <h3>Recent Feedback</h3>
+        <div class="filters">
+          <button class="chip active">All</button>
+          <button class="chip chip-pos">Positive</button>
+          <button class="chip chip-neu">Neutral</button>
+          <button class="chip chip-neg">Negative</button>
+        </div>
+      </div>
+      <ul class="feedback-list">
+        <li>
+          <span class="badge pos">Positive</span>
+          <p>Love the new dashboard—clean design and faster load times. Keep it up!</p>
+          <span class="meta">Apr 12, 2025 • Web</span>
+        </li>
+        <li>
+          <span class="badge neu">Neutral</span>
+          <p>The upload works but it’s not clear which formats are supported at first glance.</p>
+          <span class="meta">Apr 10, 2025 • Android</span>
+        </li>
+        <li>
+          <span class="badge neg">Negative</span>
+          <p>Search is slow with large files and sometimes freezes on older devices.</p>
+          <span class="meta">Apr 06, 2025 • iOS</span>
+        </li>
+        <li>
+          <span class="badge pos">Positive</span>
+          <p>Support team resolved my issue within an hour. Great experience.</p>
+          <span class="meta">Apr 03, 2025 • Email</span>
+        </li>
+      </ul>
+    </section>
+  </main>
+
+  <footer class="container footer">
+    <p>© <span id="year"></span> Amatya. Feedback Analyzer Dashboard.</p>
+  </footer>
+
+  <script>
+    document.getElementById('year').textContent = new Date().getFullYear();
+  </script>
+</body>
+</html>

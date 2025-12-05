@@ -1,0 +1,93 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.8/dist/css/bootstrap.min.css" rel="stylesheet" integrity="sha384-sRIl4kxILFvY47J16cr9ZwB07vP4J8+LH7qKQnuqkuIAvNWLzeN8tE5YBujZqJLB" crossorigin="anonymous">
+    <link rel="stylesheet" href="idea2.css">
+    <title>Modern Login Page | AsmrProg</title>
+</head>
+<!-- set API base (Netlify will serve this file; change value before deploy or use a built system) -->
+<script>
+  // default to localhost for local dev; set to deployed backend before deploy:
+  window.__API_BASE__ = "http://localhost:8082";
+</script>
+<body>
+    <header class="site-header">
+    <div class="icon">
+                    <h2 class="logo" >Amatya</h2>
+                </div>
+                <div class="menu">
+                    <ul>
+                        <li><a href="">Home</a></li>
+                        <li><a href="#">About</a></li>
+                        <li><a href="#">Contact</a></li>
+                        <li><a href="#">Products</a></li>
+                        <li><a href="#">Menu</a></li>
+                    </ul>
+                </div>
+            </div>
+    </header>   
+
+    <div class="content">
+         <h1>Amatya<br><span>RKJR Dashboard</span><br>Products Reviews & analysis</h1>
+        <p class="par">
+            Lorem ipsum dolor sit amet consectetur adipisicing elit. Ut quod enim voluptates adipisci accusantium assumenda.
+         </p>
+    </div>
+    <div class="container" id="container">
+        <div class="form-container sign-up">
+             <form onsubmit = "handleSubmitRegister(event)">
+                <h1>Create Account</h1>
+                <!-- <div class="social-icons">
+                    <a href="#" class="icon"><i class="fa-brands fa-google-plus-g"></i></a>
+                    <a href="#" class="icon"><i class="fa-brands fa-facebook-f"></i></a>
+                    <a href="#" class="icon"><i class="fa-brands fa-github"></i></a>
+                    <a href="#" class="icon"><i class="fa-brands fa-linkedin-in"></i></a>
+                </div> -->
+                <span>or use your email for registeration</span>
+                <input type="text" placeholder="Name" id="name">
+                <input type="email" placeholder="Email" id="email-reg">
+                <input type="password" placeholder="Password" id="password-reg">
+                <button type="submit">Sign Up</button>
+            </form>
+        </div>
+        <div class="form-container sign-in">
+            <form onsubmit = "handleSubmitSignIn(event)">
+                <h1>Sign In</h1>
+                <!-- <div class="social-icons">
+                    <a href="#" class="icon"><i class="fa-brands fa-google-plus-g"></i></a>
+                    <a href="#" class="icon"><i class="fa-brands fa-facebook-f"></i></a>
+                    <a href="#" class="icon"><i class="fa-brands fa-github"></i></a>
+                    <a href="#" class="icon"><i class="fa-brands fa-linkedin-in"></i></a>
+                </div> -->
+                <span>or use your email password</span>
+                <input type="email" placeholder="Email" id="email">
+                <input type="password" placeholder="Password" id="password">
+                <a href="#">Forget Your Password?</a>
+                <button type="submit">Sign In</button>
+            </form>
+        </div>
+        <div class="toggle-container">
+            <div class="toggle">
+                <div class="toggle-panel toggle-left">
+                    <h1>Welcome Back!</h1>
+                    <p>Enter your personal details to use all of site features</p>
+                    <button class="hidden" id="login">Sign In</button>
+                </div>
+                <div class="toggle-panel toggle-right">
+                    <h1>Hello, Friend!</h1>
+                    <p>Register with your personal details to use all of site features</p>
+                    <button class="hidden" id="register">Sign Up</button>
+                </div>
+            </div>
+        </div>
+    </div>
+    <footer class="site-footer">
+        <small>&copy; 2025 Amatya • All rights reserved.</small>
+    </footer>
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.8/dist/js/bootstrap.bundle.min.js" integrity="sha384-FKyoEForCGlyvwx9Hj09JcYn3nv7wiPVlz7YYwJrWVcXK/BmnVDxM+D2scQbITxI" crossorigin="anonymous"></script>  
+    <script src="idea2.js"></script>
+</body>
+</html>
