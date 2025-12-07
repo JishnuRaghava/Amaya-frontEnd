@@ -1,8 +1,8 @@
   (function(){
     // ---- CONFIG ----
     // enter your url of lambda function here
-    // const PRESIGN_URL = "https://l5ehkjo7iwhovs5q55cadg6xjq0gwxda.lambda-url.us-east-1.on.aws/";
-    // const PRESIGN_GET_URL = "https://zu6vnpuylskru35a6hkdhkjwaa0ajauj.lambda-url.us-east-1.on.aws/";
+    const PRESIGN_URL = "https://l5ehkjo7iwhovs5q55cadg6xjq0gwxda.lambda-url.us-east-1.on.aws/";
+    const PRESIGN_GET_URL = "https://zu6vnpuylskru35a6hkdhkjwaa0ajauj.lambda-url.us-east-1.on.aws/";
     const POLL_INTERVAL_MS = 2000;
     const POLL_TIMEOUT_MS = 120000;
 

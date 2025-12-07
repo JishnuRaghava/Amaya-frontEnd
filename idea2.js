@@ -4,7 +4,7 @@ const registerBtn = document.getElementById('register');
 const loginBtn = document.getElementById('login');
 
 // Use window.__API_BASE__ if set, otherwise fallback to localhost for dev
-const API_BASE = window.__API_BASE__ || "http://localhost:8082";
+const API_BASE = window.__API_BASE__ || "https://amaya-backend-llsx.onrender.com";
 
 registerBtn.addEventListener('click', () => {
     container.classList.add("active");
