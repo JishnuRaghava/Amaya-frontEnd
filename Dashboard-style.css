@@ -133,6 +133,15 @@ body {
   transition: transform .12s ease, filter .2s ease;
 }
 
+/* Add this at the bottom of your CSS file */
+#feedbackList li a {
+  display: block;
+  color: #ece8e8;
+  font-size: 14px;
+  text-align: center;
+  white-space: nowrap;
+}
+
 .btn:hover {
   filter: brightness(1.05);
   transform: translateY(-1px);
@@ -307,7 +316,13 @@ body {
   right: 10px;
   top: 10px;
   font-weight: 700;
-  color: #07121f; /* dark text on bright bar */
+  color: #fbfbfb; /* dark text on bright bar */
+}
+.muted {
+  color: #888;
+  font-size: 14px;
+  text-align: center;
+  white-space: nowrap;
 }
 
 /* Tags */

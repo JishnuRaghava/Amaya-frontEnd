@@ -134,7 +134,7 @@
       
       if (filtered.length === 0) {
         const li = document.createElement('li');
-        li.innerHTML = '<p class="muted">No feedback matching this filter.</p>';
+        li.innerHTML = '<a> No feedback matching this filter.</a>';
         feedbackList.appendChild(li);
         return;
       }
